@@ -1,0 +1,9 @@
+//ZOSMFUSS JOB (MVSS),'IZUMKDIR',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//ZOSMFPRM EXEC PGM=BPXBATCH
+//STDOUT   DD SYSOUT=*
+//STDERR   DD SYSOUT=*
+//STDPARM  DD *
+SH set -x;
+echo "chown -R IZUSVR:IZUADMIN /global/zosmf" | su;
+echo "chmod -R 755 /global/zosmf"| su;
+/*

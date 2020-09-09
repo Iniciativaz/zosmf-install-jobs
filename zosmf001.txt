@@ -1,0 +1,32 @@
+//ZOSMF001 JOB (MVSS),'IZUMKDIR',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//* Create z/OSMF Filesystem , mount and make basic dirs
+//         EXPORT SYMLIST=(*)
+//         SET OSMFROOT='/global/zosmf'
+//         SET OSMFFSNM='OMVS.GLOBAL.ZOSMF'
+//         SET OSMFFSSZ='500 200'
+//* Customization Ends here
+//UNMOUNT  EXEC PGM=BPXBATCH
+//STDOUT   DD SYSOUT=*
+//STDERR   DD SYSOUT=*
+//STDPARM  DD *,SYMBOLS=EXECSYS
+SH set -x;
+echo "/usr/sbin/unmount &OSMFROOT." | su;
+/*
+//DEFINE   EXEC   PGM=IDCAMS
+//SYSPRINT DD     SYSOUT=*
+//SYSIN    DD     *,SYMBOLS=EXECSYS
+  DELETE &OSMFFSNM.
+  SET MAXCC=0
+/*
+//ALLOCZFS EXEC PGM=BPXBATCH
+//STDOUT   DD SYSOUT=*
+//STDERR   DD SYSOUT=*
+//STDPARM  DD *,SYMBOLS=EXECSYS
+SH set -x;
+echo "zfsadm define -aggregate &OSMFFSNM.
+                    -megabytes &OSMFFSSZ." | su ;
+echo "mkdir -p &OSMFROOT." | su;
+echo "mount -o aggrgrow -f &OSMFFSNM. &OSMFROOT" | su;
+echo "mkdir -p &OSMFROOT./data/home/izusvr" | su ;
+echo "df &OSMFROOT." | su;
+/*

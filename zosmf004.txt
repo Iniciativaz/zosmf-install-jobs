@@ -1,0 +1,106 @@
+//ZOSMF004 JOB (MVSS),'ADMINT',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//*********************************************************************
+//* - Security setup for z/OSMF Administrator tasks and web site links
+//*********************************************************************
+//STEP1  EXEC PGM=IKJEFT01
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *
+ SETROPTS CLASSACT(ZMFAPLA)
+ /*****************************************************************/
+ /* Allow a user to access the Application Linking Manager task   */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.APPLINKING +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.APPLINKING CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ /*****************************************************************/
+ /* Allow a user to access the Import Manager task                */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.IMPORTMANAGER +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.IMPORTMANAGER CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ /*****************************************************************/
+ /* Allow a user to collect usage statistics about z/OSMF         */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.USAGESTATISTICS +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.USAGESTATISTICS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ /*****************************************************************/
+ /* Allow a user to access Diagnostic Assistant task              */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.DIAGNOSTIC_ASSISTANT +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.DIAGNOSTIC_ASSISTANT +
+   CLASS(ZMFAPLA) ID(IZUADMIN) ACCESS(READ)
+ /*****************************************************************/
+ /* Allow a user to access the Links task                         */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.LINKSTASK +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.LINKSTASK CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ /*****************************************************************/
+ /* generic profile for links                                     */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.** UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.** CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.** CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ /*****************************************************************/
+ /* Allow a user to view specific web site link                   */
+ /*****************************************************************/
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.SHOPZ UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.SHOPZ CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.SHOPZ CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.SUPPORT_FOR_Z_OS UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.SUPPORT_FOR_Z_OS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.SUPPORT_FOR_Z_OS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.Z_SYSTEMS UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_SYSTEMS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_SYSTEMS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.WSC_FLASHES_TECHDOCS +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.WSC_FLASHES_TECHDOCS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.WSC_FLASHES_TECHDOCS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.Z_OS_BASICS_INFORMATION_CENTER +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_BASICS_INFORMATION_CENTER +
+   CLASS(ZMFAPLA) ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_BASICS_INFORMATION_CENTER +
+   CLASS(ZMFAPLA) ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.Z_OS_HOME_PAGE UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_HOME_PAGE CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_HOME_PAGE CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.Z_OS_INTERNET_LIBRARY +
+   UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_INTERNET_LIBRARY CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.Z_OS_INTERNET_LIBRARY CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ /*****************************************************************/
+ /* Define a link as protected resource, please replace <mylink>  */
+ /* to SAF resource name suffix of the link                       */
+ /*****************************************************************/
+ /* RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.<mylink> UACC(NONE)        */
+ /* PERMIT IZUDFLT.ZOSMF.LINK.<mylink> CLASS(ZMFAPLA) +           */
+ /*  ID(IZUADMIN) ACCESS(READ)                                    */
+ /* PERMIT IZUDFLT.ZOSMF.LINK.<mylink> CLASS(ZMFAPLA) +           */
+ /* ID(IZUUSER) ACCESS(READ)                                      */
+
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+/*
+

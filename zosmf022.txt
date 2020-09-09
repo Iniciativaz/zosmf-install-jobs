@@ -1,0 +1,23 @@
+//ZOSMF022 JOB (MVSS),'SWAGGER',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//STEP1  EXEC PGM=IKJEFT01
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *
+ RDEF EJBROLE IZUDFLT.com.ibm.ws.management.security.+
+   resource.allAuthenticatedUsers UACC(NONE)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.allAuthenticatedUsers +
+   CLASS(EJBROLE) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.allAuthenticatedUsers +
+   CLASS(EJBROLE) ID(IZUADMIN) ACCESS(READ)
+ RDEF EJBROLE IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator UACC(NONE)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator +
+   CLASS(EJBROLE) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator +
+   CLASS(EJBROLE) ID(IZUADMIN) ACCESS(READ)
+ SETROPTS RACLIST(EJBROLE) REFRESH
+/*

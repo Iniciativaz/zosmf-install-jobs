@@ -1,0 +1,17 @@
+//ZOSMF003 JOB (MVSS),'AUTOSTART',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//**********************************************************************
+//*  Security Setup for z/OSMF AUTOSTART function.
+//**********************************************************************
+//AUTHSRV  EXEC PGM=IKJEFT01
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD DATA,DLM=@@
+/* Define the STARTED profiles for auto start function              */
+RDEFINE STARTED IZUINSTP.* STDATA(USER(IZUSVR) TRACE(YES))
+SETROPTS RACLIST(STARTED) REFRESH
+
+/* Allows the z/OSMF AUTOSTART to use signal code ENF83             */
+RDEFINE SERVAUTH CEA.SIGNAL.ENF83 UACC(NONE)                     */
+PERMIT  CEA.SIGNAL.ENF83 CLASS(SERVAUTH) ID(IZUSVR) ACCESS(READ)
+SETROPTS RACLIST(SERVAUTH) REFRESH
+@@

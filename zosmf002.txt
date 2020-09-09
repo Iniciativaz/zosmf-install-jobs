@@ -1,0 +1,629 @@
+//ZOSMF002 JOB (MVSS),'IZUCORE',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//********************************************************************
+//* This step sets up z/OSMF core security settings.
+//* HOSTNAME variable is for the RACF certificate
+//********************************************************************
+//         EXPORT SYMLIST=(*)
+//         SET HOSTNAME='tvt4172.svl.ibm.com'
+//* Customization ends here ******************************************
+//STEP1    EXEC PGM=IKJEFT01
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *,SYMBOLS=EXECSYS
+
+ /* Begin "Core" Setup                                             */
+ /* Activate and RACLIST the APPL class                            */
+   SETROPTS CLASSACT(APPL)
+   SETROPTS RACLIST(APPL) GENERIC(APPL)
+
+ /* Activate and RACLIST the EJBROLE class                         */
+   SETROPTS CLASSACT(EJBROLE)
+   SETROPTS RACLIST(EJBROLE) GENERIC(EJBROLE)
+
+ /* Activate and RACLIST the SERVER class                          */
+   SETROPTS CLASSACT(SERVER)
+   SETROPTS RACLIST(SERVER)
+
+ /* Activate and RACLIST the SERVAUTH class                        */
+   SETROPTS CLASSACT(SERVAUTH)
+   SETROPTS RACLIST(SERVAUTH) GENERIC(SERVAUTH)
+
+   SETROPTS RACLIST(STARTED) GENERIC(STARTED)
+
+ /* Activate and RACLIST the ZMFAPLA class                         */
+   SETROPTS CLASSACT(ZMFAPLA)
+   SETROPTS RACLIST(ZMFAPLA) GENERIC(ZMFAPLA)
+
+ /* Activate the OPERCMDS class                                    */
+ SETROPTS CLASSACT(OPERCMDS)
+ /* Refresh the OPERCMDS class                                     */
+ SETROPTS RACLIST(OPERCMDS)
+
+ /* Create the z/OSMF Administrators group                         */
+ ADDGROUP IZUADMIN OMVS(AUTOGID)
+
+ /* Create the z/OSMF Users group                                  */
+ ADDGROUP IZUUSER OMVS(AUTOGID)
+
+ /* Create the z/OSMF Unauthenticated group                        */
+ ADDGROUP IZUUNGRP OMVS(AUTOGID)
+
+ /* Create the started task USERID for the z/OSMF Server           */
+ /* Note: The HOME directory will be created by the IZUMKFS        */
+ /* sample job.                                                    */
+ ADDUSER IZUSVR DFLTGRP(IZUADMIN) OMVS(AUTOUID   +
+   HOME(/global/zosmf/data/home/izusvr) +
+   PROGRAM(/bin/sh)) NAME('zOSMF Started Task USERID')  +
+   NOPASSWORD
+
+ /* Change concurrent open file number for started task USERID     */
+ ALTUSER IZUSVR OMVS(FILEPROC(10000))
+
+ /* Create the z/OSMF unauthenticated USERID                       */
+ ADDUSER IZUGUEST RESTRICTED DFLTGRP(IZUUNGRP) OMVS(AUTOUID)   +
+   NAME('zOSMF Unauthenticated USERID') NOPASSWORD
+
+ /* Define the STARTED profiles for the z/OSMF server              */
+ RDEFINE STARTED IZUSVR1.* UACC(NONE) STDATA(USER(IZUSVR) +
+   GROUP(IZUADMIN) PRIVILEGED(NO) TRUSTED(NO) TRACE(YES))
+ RDEFINE STARTED IZUANG1.* UACC(NONE) STDATA(USER(IZUSVR) +
+   GROUP(IZUADMIN) PRIVILEGED(NO) TRUSTED(NO) TRACE(YES))
+
+ /* Define the APPL profile for the z/OSMF server                  */
+ RDEFINE APPL IZUDFLT UACC(NONE)
+
+ /* Define the SERVER profiles for the z/OSMF server               */
+ RDEFINE SERVER BBG.SECPFX.IZUDFLT UACC(NONE)
+ RDEFINE SERVER BBG.ANGEL UACC(NONE)
+ RDEFINE SERVER BBG.AUTHMOD.BBGZSAFM UACC(NONE)
+ RDEFINE SERVER BBG.AUTHMOD.BBGZSAFM.SAFCRED UACC(NONE)
+ RDEFINE SERVER BBG.AUTHMOD.BBGZSAFM.ZOSWLM UACC(NONE)
+ RDEFINE SERVER BBG.AUTHMOD.BBGZSAFM.TXRRS UACC(NONE)
+ RDEFINE SERVER BBG.AUTHMOD.BBGZSAFM.ZOSDUMP UACC(NONE)
+
+ /* Permit the z/OSMF unauthenticated USERID access                */
+ PERMIT IZUDFLT CLASS(APPL)    ID(IZUGUEST) ACCESS(READ)
+
+ /* Permit the started task USERID access                          */
+ PERMIT BBG.SECPFX.IZUDFLT CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.ANGEL CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.AUTHMOD.BBGZSAFM CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.AUTHMOD.BBGZSAFM.SAFCRED CLASS(SERVER) ACCESS(READ) +
+   ID(IZUSVR)
+ PERMIT BBG.AUTHMOD.BBGZSAFM.ZOSWLM CLASS(SERVER) ACCESS(READ) +
+   ID(IZUSVR)
+ PERMIT BBG.AUTHMOD.BBGZSAFM.TXRRS CLASS(SERVER) ACCESS(READ) +
+   ID(IZUSVR)
+ PERMIT BBG.AUTHMOD.BBGZSAFM.ZOSDUMP CLASS(SERVER) ACCESS(READ) +
+   ID(IZUSVR)
+
+ /* Define the BPX.CONSOLE profile to supress the BPXM023I message */
+ /* prefix for console messages                                    */
+ RDEFINE FACILITY BPX.CONSOLE UACC(NONE)
+
+ /* Permit the started task USERID access                          */
+ PERMIT  BPX.CONSOLE CLASS(FACILITY) ID(IZUSVR) ACCESS(READ)
+
+ /* Define the Sync-to-OS-thread FACILITY profile                  */
+ RDEFINE FACILITY BBG.SYNC.IZUDFLT UACC(NONE)
+
+ /* Permit the started task USERID access                          */
+ PERMIT  BBG.SYNC.IZUDFLT CLASS(FACILITY) ID(IZUSVR) ACCESS(CONTROL)
+
+ /* Define the FACILITY class profiles for working with digital    */
+ /* certificates                                                   */
+ RDEFINE FACILITY IRR.DIGTCERT.LIST UACC(NONE)
+ RDEFINE FACILITY IRR.DIGTCERT.LISTRING UACC(NONE)
+
+ /* Allow users of the z/OSMF Configuration Workflow to extract    */
+ /* profile information                                            */
+ RDEFINE FACILITY IRR.RADMIN.LISTUSER
+ RDEFINE FACILITY IRR.RADMIN.LISTGRP
+ RDEFINE FACILITY IRR.RADMIN.RLIST
+ RDEFINE FACILITY IRR.RADMIN.SETROPTS.LIST
+
+ /* Permit the started task USERID access                          */
+ PERMIT IRR.DIGTCERT.LIST CLASS(FACILITY) ID(IZUSVR) ACCESS(READ)
+ PERMIT IRR.DIGTCERT.LISTRING CLASS(FACILITY) ID(IZUSVR) +
+   ACCESS(READ)
+
+ /* Create the CA certificate for the z/OSMF server                */
+ RACDCERT CERTAUTH GENCERT +
+   SUBJECTSDN(CN('z/OSMF CertAuth for Security Domain') +
+   OU('IZUDFLT')) WITHLABEL('zOSMFCA')  +
+   TRUST NOTAFTER(DATE(2023/05/17))
+ RACDCERT ADDRING(IZUKeyring.IZUDFLT) ID(IZUSVR)
+
+ /* Create the server certificate for the z/OSMF server            */
+ /* Change HOST NAME in CN field into real local host name         */
+ /* Usually the format of the host name is 'XXXX.XXX.XXX.XXX'      */
+ RACDCERT ID( IZUSVR ) GENCERT SUBJECTSDN(CN('&HOSTNAME.') +
+   O('IBM') OU('IZUDFLT')) WITHLABEL('DefaultzOSMFCert.IZUDFLT'), +
+   SIGNWITH(CERTAUTH LABEL('zOSMFCA')) NOTAFTER(DATE(2023/05/17))
+ RACDCERT ALTER(LABEL('DefaultzOSMFCert.IZUDFLT')) ID(IZUSVR) TRUST
+ RACDCERT ID( IZUSVR ) CONNECT (LABEL('DefaultzOSMFCert.IZUDFLT') +
+   RING(IZUKeyring.IZUDFLT) DEFAULT)
+ RACDCERT ID( IZUSVR ) CONNECT (LABEL('zOSMFCA') +
+   RING(IZUKeyring.IZUDFLT) CERTAUTH)
+
+ /* Assumption: SERVAUTH class is active                           */
+ /* SETROPTS GENERIC(SERVAUTH)                                     */
+
+ /* Define the CEA resource profile required for z/OSMF server     */
+ RDEFINE SERVAUTH CEA.CEATSO.* UACC(NONE)
+
+ /* Define the Account Number resource profile for REST File API   */
+ RDEFINE ACCTNUM IZUACCT UACC(NONE)
+
+ /* Define the TSO Procedure resource profile for REST File API    */
+ RDEFINE TSOPROC IZUFPROC UACC(NONE)
+
+ /* List-of-groups authority checking supplements the normal RACF  */
+ /* access authority checking by allowing all groups of which a    */
+ /* user ID is a member to enter into the access list checking     */
+ /* process. Uncomment the following line to activate this.        */
+ /* SETROPTS GRPLIST                                               */
+
+ /* Create the z/OS Security Administrators group                  */
+ ADDGROUP IZUSECAD OMVS(AUTOGID)
+
+ /* Define the ZMFAPLA profile for the z/OSMF server               */
+
+ /* By default, no users are allowed to perform z/OSMF tasks. Users*/
+ /* will only have access to z/OSMF tasks if it's specified        */
+ /* explicitly.                                                    */
+ RDEFINE ZMFAPLA IZUDFLT.** UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF UACC(NONE)
+
+ /* The EJBROLE definitions are case-sensitive in RACF.  Insure you*/
+ /* preserve case for these commands                               */
+ /* Assumption: EJBROLE is defined, activated, and raclisted.      */
+ RDEFINE EJBROLE IZUDFLT.*.izuUsers UACC(NONE)
+
+ /* Define the z/OSMF Server profile                               */
+ RDEFINE SERVER BBG.SECCLASS.ZMFAPLA UACC(NONE)
+
+ /* Permit the started task USERID access                          */
+ PERMIT BBG.SECCLASS.ZMFAPLA CLASS(SERVER) ID(IZUSVR) ACCESS(READ)
+
+ /* Roles processing will permit the z/OSMF Server groups to the   */
+ /* Application Server resources                                   */
+ /* Assumption: APPL class has been defined, activated, raclisted. */
+
+ /* Permit the Administrators group to this profile                */
+ PERMIT CEA.CEATSO.* CLASS(SERVAUTH) ID(IZUADMIN) ACCESS(READ)
+
+ /* Permit the Users group to this profile                         */
+ PERMIT CEA.CEATSO.* CLASS(SERVAUTH) ID(IZUUSER) ACCESS(READ)
+
+ /* Permit the started task USERID to this profile                 */
+ PERMIT CEA.CEATSO.* CLASS(SERVAUTH) ID(IZUSVR) ACCESS(READ)
+
+ /* Make changes effective                                         */
+ SETROPTS RACLIST(SERVAUTH) REFRESH
+
+ /* Permit the Administrators group to these profiles              */
+ PERMIT IZUACCT CLASS(ACCTNUM) ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUFPROC CLASS(TSOPROC) ID(IZUADMIN) ACCESS(READ)
+
+ /* Permit the Users group to these profiles                       */
+ PERMIT IZUACCT CLASS(ACCTNUM) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUFPROC CLASS(TSOPROC) ID(IZUUSER) ACCESS(READ)
+
+ /* Define console profile in class TSOAUTH to issue MVS commands  */
+ /* via EMCS consoles                                              */
+ RDEFINE TSOAUTH CONSOLE UACC(NONE)
+
+ /*****************************************************************/
+ /* 1. Please replace <userid> with the target user id.           */
+ /* 2. Uncomment below commands.                                  */
+ /*****************************************************************/
+ /*PERMIT console CLASS(TSOAUTH) ACCESS(read) ID(<userid>)        */
+
+ /* Make changes effective                                         */
+ SETROPTS RACLIST(TSOAUTH) REFRESH
+
+ /* Define MCS operator profile starting with prefix IZU@          */
+ RDEFINE OPERCMDS MVS.MCSOPER.IZU@* UACC(NONE)
+
+ /* Permit the Administrators group to these profiles              */
+ PERMIT MVS.MCSOPER.IZU@* CLASS(OPERCMDS) ID(IZUADMIN) ACCESS(READ)
+
+ /* Permit the Users group to these profiles                       */
+ PERMIT MVS.MCSOPER.IZU@* CLASS(OPERCMDS) ID(IZUUSER) ACCESS(READ)
+
+ /* Make changes effective                                         */
+ SETROPTS RACLIST(OPERCMDS) REFRESH
+
+ /*   Profile Definitions for Core                                 */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.APPLINKING UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.IMPORTMANAGER UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.LINKSTASK UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.LOGGER UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.UI_LOG_MANAGEMENT +
+   UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.USAGESTATISTICS +
+   UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.LINK.** UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.SYSTEMS.VIEW UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.SYSTEMS.MODIFY UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.SYSTEMS UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS.VIEW UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS.MODIFY +
+   UACC(NONE)
+
+ /*   Profile Definitions for "Workflow"                           */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS UACC(NONE)
+
+ /* Profile Definitions for "Workflow administrator role" */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.WORKFLOW.ADMIN UACC(NONE)
+
+ /* Profile Definitions for "z/OSMF notification" */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.NOTIFICATION.SETTINGS UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.NOTIFICATION.SETTINGS.ADMIN UACC(NONE)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.NOTIFICATION.MODIFY UACC(NONE)
+
+ /*  End Core Setup                                                */
+ /*                                                                */
+ /*   Begin zOSMF User Role Setup                                  */
+ /*                                                                */
+ PERMIT IZUDFLT             CLASS(APPL)    ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.*.izuUsers  CLASS(EJBROLE) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF       CLASS(ZMFAPLA) ID(IZUUSER) ACCESS(READ)
+
+ /*   Permit definitions for Core                                  */
+ PERMIT IZUDFLT.ZOSMF.LINK.** CLASS(ZMFAPLA) ID(IZUUSER) +
+   ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.SYSTEMS.VIEW CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.SYSTEMS CLASS(ZMFAPLA) ID(IZUUSER) +
+   ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS.VIEW CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+
+ /*   Permit definitions for Workflow                              */
+ PERMIT IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ /*   Permit definitions for notification                          */
+ PERMIT IZUDFLT.ZOSMF.NOTIFICATION.SETTINGS CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.NOTIFICATION.MODIFY CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+
+ /*                                                                */
+ /*  End zOSMF User Role Setup                                     */
+ /*                                                                */
+
+ /*                                                                */
+ /*   Begin zOSMF Administrator Role Setup                         */
+ /*                                                                */
+ PERMIT IZUDFLT             CLASS(APPL)    ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.*.izuUsers  CLASS(EJBROLE) ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF       CLASS(ZMFAPLA) ID(IZUADMIN) ACCESS(READ)
+
+ /*   Permit definitions for Core                                  */
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.APPLINKING CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.IMPORTMANAGER   CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.LINKSTASK  CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.LOGGER   CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.UI_LOG_MANAGEMENT  CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.USAGESTATISTICS   +
+   CLASS(ZMFAPLA) ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.LINK.** CLASS(ZMFAPLA) ID(IZUADMIN) +
+   ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.SYSTEMS.VIEW CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.SYSTEMS.MODIFY CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.SYSTEMS CLASS(ZMFAPLA) ID(IZUADMIN) +
+   ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS.VIEW CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.SETTINGS.FTP_SERVERS.MODIFY CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+
+ /*   Permit definitions for Workflow                              */
+ PERMIT IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+
+ /* Permit definitions for "Workflow administrator role"  */
+ PERMIT IZUDFLT.ZOSMF.WORKFLOW.ADMIN CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ /* Permit definitions for "z/OSMF notification"  */
+ PERMIT IZUDFLT.ZOSMF.NOTIFICATION.SETTINGS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.NOTIFICATION.SETTINGS.ADMIN CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.NOTIFICATION.MODIFY CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+
+ /* Permit the z/OSMF administrator access                         */
+ PERMIT IRR.RADMIN.LISTUSER CLASS(FACILITY) ID(IZUADMIN) +
+   ACCESS(READ)
+ PERMIT IRR.RADMIN.LISTGRP CLASS(FACILITY) ID(IZUADMIN) +
+   ACCESS(READ)
+ PERMIT IRR.RADMIN.RLIST CLASS(FACILITY) ID(IZUADMIN) +
+   ACCESS(READ)
+ PERMIT IRR.RADMIN.SETROPTS.LIST CLASS(FACILITY) ID(IZUADMIN) +
+   ACCESS(READ)
+
+ /*                                                                */
+ /*  End zOSMF Administrator Role Setup                            */
+ /*                                                                */
+ /*                                                                */
+ /*   Begin zOS Security Administrator Role Setup                  */
+ /*                                                                */
+
+ PERMIT IZUDFLT             CLASS(APPL)    ID(IZUSECAD) ACCESS(READ)
+ PERMIT IZUDFLT.*.izuUsers  CLASS(EJBROLE) ID(IZUSECAD) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF       CLASS(ZMFAPLA) ID(IZUSECAD) ACCESS(READ)
+
+ /*   Permit definitions for Workflow                              */
+ PERMIT IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS CLASS(ZMFAPLA) +
+   ID(IZUSECAD) ACCESS(READ)
+
+ /*                                                                */
+ /*  End zOS Security Administrator Role Setup                     */
+ /*                                                                */
+
+
+ /* Need to REFRESH these classes for Roles                        */
+ SETROPTS RACLIST(APPL) REFRESH
+ SETROPTS RACLIST(EJBROLE) REFRESH
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+ SETROPTS RACLIST(SERVER) REFRESH
+ SETROPTS RACLIST(STARTED) REFRESH
+ SETROPTS RACLIST(FACILITY) REFRESH
+ SETROPTS RACLIST(ZMFCLOUD) REFRESH
+
+ /* Connect the started task USERID to the CIM USER group          */
+ CONNECT (IZUSVR) GROUP(CFZUSRGP)
+
+ /*                                                                */
+ /*  The V2R3 setup contains the profiles which are added in V2R3  */
+ /*  release                                                       */
+
+ /* Define the STARTED profiles for auto start function            */
+ RDEFINE STARTED IZUINSTP.* UACC(NONE) STDATA(USER(IZUSVR) +
+   GROUP(IZUADMIN) PRIVILEGED(NO) TRUSTED(NO) TRACE(YES))
+
+ /* Define the CEA resource profile required for auto start        */
+ /* function                                                       */
+ RDEFINE SERVAUTH CEA.SIGNAL.* UACC(NONE)
+
+ /* Permit the started task USERID to this profile                 */
+ PERMIT CEA.SIGNAL.* CLASS(SERVAUTH) ID(IZUSVR) ACCESS(READ)
+
+ /* Profile for general setting                                    */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.GENERAL.SETTINGS UACC(NONE)
+
+ /* Permit the Administrators group to this profile                */
+ PERMIT IZUDFLT.ZOSMF.GENERAL.SETTINGS CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+
+ /* Profile Definitions for "z/OSMF email function" */
+ RDEFINE FACILITY IRR.RUSERMAP UACC(NONE)
+
+ /* Permit the started task USERID to this profile                 */
+ PERMIT IRR.RUSERMAP CLASS(FACILITY) ID(IZUSVR) ACC(READ)
+
+ /*----------------------------------------------------------------*/
+ /* Begin Setup for Discovery CPC function in Systems task         */
+ /*----------------------------------------------------------------*/
+ /* Replace the <netid.nau> with the 3-17 character SNA name of    */
+ /* the particular CPC.                                            */
+ /* Replace the <uppercasecommunityname> with the SNMP community   */
+ /* name that is associated with the CPC.                          */
+ /* Replace the <imagename> with the 1-8 character which           */
+ /* represents LPAR name.                                          */
+ /*                                                                */
+ /* RDEFINE FACILITY HWI.APPLNAME.HWISERV UACC(NONE)               */
+ /* PERMIT HWI.APPLNAME.HWISERV CLASS(FACILITY) ID(IZUADMIN) +     */
+ /*   ACCESS(READ)                                                 */
+ /* RDEFINE FACILITY HWI.TARGET.<netid.nau> UACC(NONE) +           */
+ /*   APPLDATA('<uppercasecommunityname>')                         */
+ /* RDEFINE FACILITY HWI.TARGET.<netid.nau>.<imagename> UACC(NONE) */
+ /* PERMIT HWI.TARGET.<netid.nau> CLASS(FACILITY) ID(IZUADMIN) +   */
+ /*   ACCESS(READ)                                                 */
+ /* PERMIT HWI.TARGET.<netid.nau>.<imagename> CLASS(FACILITY) +    */
+ /*   ID(IZUADMIN) ACCESS(READ)                                    */
+ /*----------------------------------------------------------------*/
+ /* End Setup for Discovery CPC function in Systems task           */
+ /*----------------------------------------------------------------*/
+
+ /* If AT_TLS is enabled, the z/OSMF started task userid needs to  */
+ /* be permitted on resource EZB.INITSTACK.sysname.tcpname         */
+ /*                                                                */
+ /* PERMIT EZB.INITSTACK.sysname.tcpname CLASS(SERVAUTH)  +        */
+ /*   ID(IZUSVR) ACCESS(READ)                                      */
+
+ /* Profile Definitions for "zOS Operator Consoles" task */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.CONSOLES.ZOSOPER UACC(NONE)
+ /* Permit definitions for "zOS Operator Consoles" task */
+ PERMIT IZUDFLT.ZOSMF.CONSOLES.ZOSOPER CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ /* Permit definitions for "zOS Operator Consoles" task */
+ PERMIT IZUDFLT.ZOSMF.CONSOLES.ZOSOPER CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+
+ /* Profile definitions for Named Angel Support                    */
+ RDEFINE SERVER BBG.ANGEL.IZUANG1 UACC(NONE)
+ PERMIT BBG.ANGEL.IZUANG1 CLASS(SERVER) ID(IZUSVR) ACCESS(READ)
+
+ /* Define security setup to permit Authorized WLM Service(ZOSWLM )*/
+ RDEFINE FACILITY BPX.WLMSERVER UACC(NONE)
+ PERMIT BPX.WLMSERVER CLASS(FACILITY) ID(IZUSVR) ACCESS(READ)
+
+ /* Profile for TSO RESTful API remote support */
+ /* RDEFINE SERVAUTH CEA.CEATSO.FLOW.* UACC(NONE) */
+ /* PERMIT CEA.CEATSO.FLOW.* CLASS(SERVAUTH) ID(<userid>) ACCESS(READ) */
+
+ /* Profile for Liberty apiDiscovery support              */
+ RDEF EJBROLE IZUDFLT.com.ibm.ws.management.security.+
+    resource.allAuthenticatedUsers UACC(NONE)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.allAuthenticatedUsers +
+   CLASS(EJBROLE) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.allAuthenticatedUsers +
+   CLASS(EJBROLE) ID(IZUADMIN) ACCESS(READ)
+
+ RDEF EJBROLE IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator UACC(NONE)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator +
+   CLASS(EJBROLE) ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.com.ibm.ws.management.security.+
+   resource.Administrator +
+   CLASS(EJBROLE) ID(IZUADMIN) ACCESS(READ)
+ SETROPTS RACLIST(EJBROLE) REFRESH
+
+ /* Make changes effective                                         */
+ SETROPTS RACLIST(SERVER) REFRESH
+ SETROPTS RACLIST(SERVAUTH) REFRESH
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+ SETROPTS RACLIST(FACILITY) REFRESH
+
+ /*                                                                */
+ /* The CLOUD step performs setup that is only required if you     */
+ /* plan to use the Cloud Provisioning and Management support AND  */
+ /* you configure Cloud Provisioning and Management for REXX       */
+ /* workflow support for automatic security processing.            */
+ /*                                                                */
+ /* IBM recommends using the IRRSMO00 (R_SecMgtOper) support when  */
+ /* using automatic security processing for Cloud Provisioning and */
+ /* Management.  Then this step is not necessary.                  */
+ /*                                                                */
+ /* Connect the started task user ID to the IZUSECAD group.        */
+ /* This is needed so z/OSMF initialization processing can create  */
+ /* a CLOUD properties file and assign its group ownership to      */
+ /* IZUSECAD.                                                      */
+ /*                                                                */
+ /* This is necessary when using automatic security processing     */
+ /* with REXX workflows because the properties file identifies the */
+ /* location of the REXX exec that performs the automatic security */
+ /* operations, AS THE CLOUD_SEC_ADMIN SECURITY ADMINISTRATOR ID   */
+ /* SPECIFIED IN IZUPRMxx.  This properties file MUST BE properly  */
+ /* secured to prevent unauthorized changes to it.                 */
+ /*                                                                */
+ /* If the CLOUD step is not done, when Cloud Provisioning and     */
+ /* Management is configured to the REXX implementation for        */
+ /* automatic security processing, Cloud Provisioning and          */
+ /* Management will issue IYURM0041E messages to the operator      */
+ /* console when performing operations that require security       */
+ /* processing and the requested operation will fail.  On startup, */
+ /* IZUG202E error messages will be issued to the server's job log.*/
+ /*                                                                */
+ /* The rest of z/OSMF is not affected and will operate normally.  */
+
+ CONNECT (IZUSVR) GROUP(IZUSECAD)
+
+ /*                                                                */
+ /* End CLOUD step Setup                                           */
+ /*                                                                */
+
+/*
+//V2R4   EXEC PGM=IKJEFT01,DYNAMNBR=99
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *
+ /*                                                                */
+ /*  Begin " z/OSMF Security Configuration Assistant" Setup          */
+ /*                                                                */
+
+ /*   Profile Definitions for z/OSMF Security Configuration Assistant */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.CONFIGURATION.SECURITY_ASSISTANT +
+        UACC(NONE)
+
+ RDEFINE SERVER BBG.SECCLASS.SERVER UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.APPL UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.FACILITY UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.EJBROLE UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.SERVAUTH UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.STARTED UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.ACCTNUM UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.TSOPROC UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.TSOAUTH UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.OPERCMDS UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.CSFSERV UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.JESSPOOL UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.LOGSTRM UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.UNIXPRIV UACC(NONE)
+ RDEFINE SERVER BBG.SECCLASS.RDATALIB UACC(NONE)
+
+ /******************************************************************/
+ /* Permit definitions for  z/OSMF Security Configuration Assistant*/
+ /******************************************************************/
+ /* Begin zOSMF Administrator Role Setup                           */
+ /******************************************************************/
+ PERMIT IZUDFLT.ZOSMF.CONFIGURATION.SECURITY_ASSISTANT +
+        CLASS(ZMFAPLA) ACCESS(READ) ID(IZUADMIN)
+
+ /******************************************************************/
+ /*   End zOSMF Administrator Role Setup                           */
+ /******************************************************************/
+
+ /******************************************************************/
+ /*  Permit the started task USERID access                         */
+ /******************************************************************/
+ PERMIT BBG.SECCLASS.SERVER CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.APPL CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.FACILITY CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.EJBROLE CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.SERVAUTH CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.STARTED CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.ACCTNUM CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.TSOPROC CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.TSOAUTH CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.OPERCMDS CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.CSFSERV CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.JESSPOOL CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.LOGSTRM CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.UNIXPRIV CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+ PERMIT BBG.SECCLASS.RDATALIB CLASS(SERVER) ACCESS(READ) ID(IZUSVR)
+
+ /******************************************************************/
+ /*  End Permit the started task USERID access                     */
+ /******************************************************************/
+
+ /* Need to REFRESH these classes for Roles                        */
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+ SETROPTS RACLIST(SERVER) REFRESH
+
+ /*                                                                */
+ /*  End " z/OSMF Security Configuration Assistant" Setup          */
+ /*                                                                */
+
+ /*                                                                */
+ /*  Begin "z/OSMF Diagnostic Assistant" Setup                     */
+ /*                                                                */
+
+ /*  Profile Definition for z/OSMF Diagnostic Assistant            */
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.ADMINTASKS.DIAGNOSTIC_ASSISTANT +
+   UACC(NONE)
+
+ /*  Permit definition for z/OSMF Diagnostic Assistant             */
+ PERMIT IZUDFLT.ZOSMF.ADMINTASKS.DIAGNOSTIC_ASSISTANT +
+   CLASS(ZMFAPLA) ACCESS(READ) ID(IZUADMIN)
+
+ /*  Need to REFRESH these classes for Roles                       */
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+
+ /*                                                                */
+ /*  End "z/OSMF Diagnostic Assistant" Setup                       */
+ /*                                                                */
+
+ /*                                                                */
+ /*  End V2R4 step Setup                                           */
+ /*                                                                */
+/*

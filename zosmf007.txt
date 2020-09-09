@@ -1,0 +1,26 @@
+//ZOSMF007 JOB (MVSS),'IZUCPCD',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//STEP1  EXEC PGM=IKJEFT01,DYNAMNBR=99
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *
+ /******************************************************************/
+ /* This sample JCL intends to help with security setup required   */
+ /* per user of Discover CPC function.                             */
+ /******************************************************************/
+
+ RDEFINE FACILITY HWI.APPLNAME.HWISERV UACC(NONE)
+ PERMIT HWI.APPLNAME.HWISERV CLASS(FACILITY) ID(IZUADMIN) ACCESS(READ)
+
+ RDEFINE FACILITY HWI.TARGET.<netid.nau> UACC(NONE) -
+  APPLDATA('<uppercasecommunityname>')
+
+ RDEFINE FACILITY HWI.TARGET.<netid.nau>.<imagename> UACC(NONE)
+
+ PERMIT HWI.TARGET.<netid.nau> CLASS(FACILITY) ID(IZUADMIN) -
+  ACCESS(READ)
+ PERMIT HWI.TARGET.<netid.nau>.<imagename> CLASS(FACILITY) -
+  ID(IZUADMIN) ACCESS(READ)
+
+ SETROPTS RACLIST(FACILITY) REFRESH
+
+/*

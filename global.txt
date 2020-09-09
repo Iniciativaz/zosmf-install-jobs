@@ -1,0 +1,17 @@
+//ZOSMF001 JOB (MVSS),'IZUMKDIR',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//DEFINE   EXEC   PGM=IDCAMS
+//SYSPRINT DD     SYSOUT=*
+//SYSIN    DD     *
+  DELETE OMVS.GLOBAL
+  SET MAXCC=0
+/*
+//ALLOCZFS EXEC PGM=BPXBATCH
+//STDOUT   DD SYSOUT=*
+//STDERR   DD SYSOUT=*
+//STDPARM  DD *
+SH set -x;
+echo "zfsadm define -aggregate OMVS.GLOBAL
+                    -megabytes 100 100" | su ;
+echo "/usr/sbin/mount -f OMVS.GLOBAL /global" | su;
+echo "mkdir -p /global/zosmf" | su;
+/*

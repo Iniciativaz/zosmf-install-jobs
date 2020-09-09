@@ -1,0 +1,734 @@
+//ZOSMF017 JOB (MVSS),'IZUCPSEC',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//PRSECCPM  EXEC PGM=IKJEFT1B
+//SYSEXEC   DD  UNIT=SYSALLDA,SPACE=(80,(5,1)),
+//          DSN=&SYSEXEC,
+//          AVGREC=K,DSNTYPE=LIBRARY,
+//          RECFM=FB,LRECL=80,DSORG=PO
+//SYSUT2    DD  DISP=(OLD,PASS),VOL=REF=*.SYSEXEC,
+//          DSN=&SYSEXEC(PRSECCPM)
+//SYSTSPRT  DD  SYSOUT=*
+//SYSTSIN   DD  *
+ REPRO INFILE(SYSIN) OUTFILE(SYSUT2)
+ %PRSECCPM
+//SYSIN    DD *
+ /* REXX */
+ trace 'e'
+
+ ADDRESS TSO
+ /*----------------------------------------------------------------*/
+ /* Cloud Provisioning and Management (CP&M) for z/OS Security     */
+ /* Setup                                                          */
+ /*                                                                */
+ /* Generally, all resource profiles related to CP&M are in the    */
+ /* ZMFCLOUD class.  The exceptions are the navigation task        */
+ /* resource profiles, which are in the ZMFAPLA class.             */
+ /*                                                                */
+ /* The CP&M resource profiles and groups use the CLOUD_SAF_PREFIX */
+ /* configured in IZUPRMxx as the root value to generate unique    */
+ /* identifiers used as group names as the distinguishing part of  */
+ /* resource profile names.                                        */
+ /*                                                                */
+ /* The default value is IYU.                                      */
+ /*                                                                */
+ /*----------------------------------------------------------------*/
+ /* INTRODUCTION                                                   */
+ /*----------------------------------------------------------------*/
+ /* This job sets up the security environment for Cloud            */
+ /* Provisioning and Management so that z/OSMF administrators have */
+ /* access to the Resource Management and Software Services tasks, */
+ /* as well as having the Domain Administrator role for the default*/
+ /* domain.  This enables existing z/OSMF Administrators to        */
+ /* immediately use the Software Services task to add templates to */
+ /* the default domain without any further setup.  z/OSMF Users    */
+ /* will have access to the Software Services task and will be able*/
+ /* to provision any Software Services templates that the z/OSMF   */
+ /* administrators created in the default domain and made available*/
+ /* in the default tenant.                                         */
+ /*                                                                */
+ /* A brief explanation of the Cloud Provisioning and Management   */
+ /* roles is provided below, after the introduction to the basic   */
+ /* authorization approach used in Cloud Provisioning and          */
+ /* Management.                                                    */
+ /*                                                                */
+ /*----------------------------------------------------------------*/
+ /* BASIC AUTHORIZATION APPROACH FOR CP&M                          */
+ /*----------------------------------------------------------------*/
+ /* The basic authorization approach used in Cloud Provisioning is */
+ /* straight forward.                                              */
+ /* - Authority to perform an action associated with a specific    */
+ /*   user role is controlled by having READ access to the         */
+ /*   RESOURCE PROFILE for that role.                              */
+ /* - Access to the resource profile for a given role is given to  */
+ /*   a GROUP defined for that role.  That group is granted READ   */
+ /*   access to the RESOURCE PROFILE for that role.                */
+ /* - Specific users are assigned roles by connecting their IDs to */
+ /*   the GROUP associated with that role.                         */
+ /*                                                                */
+ /*   For example:                                                 */
+ /*   Cloud Provisioning specifies that only domain administrators */
+ /*   or landlords can perform certain actions, such as assigning  */
+ /*   Network/WLM Administrators and domain template approvers for */
+ /*   the domain they administer.                                  */
+ /*                                                                */
+ /*----------------------------------------------------------------*/
+ /* CP&M USER ROLES                                                */
+ /*----------------------------------------------------------------*/
+ /*  +----------------+                                            */
+ /*  | Landlord Role: |                                            */
+ /*  +----------------+                                            */
+ /*  Landlords are system programmers who are responsible for      */
+ /*  creating and deleting Cloud Provisioning and Management       */
+ /*  domains.  Landlords assigns administrators to domains.        */
+ /*                                                                */
+ /*  Landlords also have authority as domain administrators in all */
+ /*  Cloud Provisioning and Management domains.                    */
+ /*                                                                */
+ /*  Role Resource Profile:                                        */
+ /*      IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU        */
+ /*                                                                */
+ /*  Role Group (granted READ access to the role resource          */
+ /*  profile):                                                     */
+ /*      IYU, IZUADMIN                                             */
+ /*                                                                */
+ /*  Landlords have access to the Cloud Provisioning and Management*/
+ /*  Resource Management task and Software Services task.          */
+ /*                                                                */
+ /*  The landlord role can be further restricted by removing       */
+ /*  authorization for IZUADMIN, and instead, by connecting        */
+ /*  individual users to the IYU group.                            */
+ /*                                                                */
+ /*  +----------------------------+                                */
+ /*  | Domain Administrator Role: |                                */
+ /*  +----------------------------+                                */
+ /*  Domain administrators are middleware system programmers that  */
+ /*  provide middleware as a service by making templates, used to  */
+ /*  provision middleware instances, available in the domain.      */
+ /*                                                                */
+ /*  Domain administrators manage tenants in their domain to which */
+ /*  templates are associated with defined pools of resources.     */
+ /*  Domain administrators control the total and per-user          */
+ /*  provisionable instances for each template for a given tenant. */
+ /*  Domain administrators also manage consumers, a.k.a. authorized*/
+ /*  tenant users, for each tenant in the domain.                  */
+ /*                                                                */
+ /*  z/OSMF administrators (members of the IZUADMIN group) are     */
+ /*  granted access to the default domain as domain administrators.*/
+ /*  This is ONLY for the default domain so it is usable without   */
+ /*  further configuration.                                        */
+ /*                                                                */
+ /*  Role Resource Profile:                                        */
+ /*      IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU0       */
+ /*      (for the default domain)                                  */
+ /*                                                                */
+ /*  Role Group (granted READ access to the role resource          */
+ /*  profile):                                                     */
+ /*      IYU0, IZUADMIN (for the default domain)                   */
+ /*                                                                */
+ /*  The role resource profile suffix and group name for each      */
+ /*  domain are uniquely assigned: IYU1, IYU2...                   */
+ /*                                                                */
+ /*  Domain administrators have access to the Resource Management  */
+ /*  and the Software Services tasks of Cloud Provisioning.        */
+ /*                                                                */
+ /*  +-----------------------+                                     */
+ /*  | Tenant Consumer Role: |                                     */
+ /*  +-----------------------+                                     */
+ /*  Tenant consumers are the end-users of middleware services that*/
+ /*  middlware system programmers make available as templates.     */
+ /*  provision middleware instances, available in the domain.      */
+ /*                                                                */
+ /*  Tenant consumers are allowed to access the Software Services  */
+ /*  task to run (provision) templates.  They are also allowed to  */
+ /*  manage instances they provisioned.                            */
+ /*                                                                */
+ /*  Role Resource Profile:                                        */
+ /*      IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU000     */
+ /*      (for the default tenant)                                  */
+ /*                                                                */
+ /*  Role Group (granted READ access to the role resource          */
+ /*  profile):                                                     */
+ /*      IYU000, IZUUSER, IZUADMIN (for the default tenant)        */
+ /*                                                                */
+ /*  The role resource profile suffix and group name for each      */
+ /*  tenant are uniquely assigned: IYU000, IYU001, IYU100...       */
+ /*  All IYU0yy groups are associated with the default domain.     */
+ /*  All IYUxyy groups are associated with domain ID IYUx          */
+ /*                                                                */
+ /*  Tenant consumers have access to the Software Services task of */
+ /*  Cloud Provisioning.                                           */
+ /*                                                                */
+ /*  +-----------------------------+                               */
+ /*  | Network Administrator Role: |                               */
+ /*  +-----------------------------+                               */
+ /*  Network administrators are users who are authorized to manage */
+ /*  network resources using Network Configuration Assistant.      */
+ /*  Network administrators are responsible for completing         */
+ /*  Network Resource Pools from which network resources may be    */
+ /*  dynamically requested by templates during provisioning.       */
+ /*                                                                */
+ /*  The need for network administrators in support of  CP&M       */
+ /*  depends on the requirements of the templates being used to    */
+ /*  provision software services.                                  */
+ /*                                                                */
+ /*  +-----------------------------------------+                   */
+ /*  | Workload Management Administrator Role: |                   */
+ /*  +-----------------------------------------+                   */
+ /*  Workload Management administrators are user who are authorized*/
+ /*  to manage WLM resources using Workload Management.            */
+ /*  Workload Management administrators are responsible for        */
+ /*  completing WLM Resource Pools from which classification rules */
+ /*  may be dynamically requested by templates during provisioning.*/
+ /*                                                                */
+ /*================================================================*/
+ /* By default, CP&M will automatically manage the security        */
+ /* environment when performing operations requiring security      */
+ /* changes.                                                       */
+ /*                                                                */
+ /* Part of the security setup that follows is for the purpose     */
+ /* of establishing the security environment for the default       */
+ /* domain and tenant that will be created when z/OSMF starts for  */
+ /* the first time.  Existing default domain and tenant settings   */
+ /* will remain unchanged during subsequent restarts.              */
+ /*----------------------------------------------------------------*/
+
+ /*----------------------------------------------------------------*/
+ /* CP&M Automatic Security Setup                                  */
+ /*                                                                */
+ /* Replace <cloud_sec_admin> with the CLOUD_SEC_ADMIN value from  */
+ /* IZUPRMxx which identifies the security administrator ID to be  */
+ /* used for all CP&M automatic security processing.               */
+ /*----------------------------------------------------------------*/
+ 'CONNECT (A089712) GROUP(IZUSECAD)'
+
+ /*----------------------------------------------------------------*/
+ /* Activate the ZMFCLOUD class                                    */
+ /*----------------------------------------------------------------*/
+ 'SETROPTS CLASSACT(ZMFCLOUD)'
+ 'SETROPTS RACLIST(ZMFCLOUD) GENERIC(ZMFCLOUD)'
+
+ /* Enable the z/OSMF server to access the ZMFCLOUD resource class.*/
+ 'RDEFINE SERVER BBG.SECCLASS.ZMFCLOUD UACC(NONE) OWNER(IZUADMIN)'
+ 'PERMIT BBG.SECCLASS.ZMFCLOUD CLASS(SERVER) ID(IZUSVR) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the CP&M landlord role.                                  */
+ /*                                                                */
+ /* Connect users with landlord authority to the IYU group.        */
+ /* This is a manual operation to be performed outside of z/OSMF.  */
+ /*                                                                */
+ /* To simplify use of CP&M, z/OSMF administrators are given the   */
+ /* landlord role.  The IZUADMIN group's permission to the landlord*/
+ /* resource profile can be remove to provide more granular control*/
+ /* of who has landlord authority.                                 */
+ /*----------------------------------------------------------------*/
+ 'ADDGROUP IYU'
+ 'CONNECT (<landlord-id>) GROUP(IYU)'
+
+ 'RDEFINE ZMFCLOUD
+     (IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU)
+     UACC(NONE) OWNER(IYU)'
+
+ /* Give z/OSMF Administrators the CP&M Landlord Role along with   */
+ /* the user IDs connected to the IYU group.                       */
+ /*                                                                */
+ /*  The landlord role can be further restricted by removing       */
+ /*  authorization for IZUADMIN, and instead, by connecting        */
+ /*  individual users to the IYU group.                            */
+
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU
+     CLASS(ZMFCLOUD) ID(IYU IZUADMIN) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the domain administrator role for the default domain.    */
+ /* Subsequent Resource Management operations through the user     */
+ /* interface will automatically update the default domain         */
+ /* security environment when administrators are added/removed.    */
+ /*----------------------------------------------------------------*/
+ 'ADDGROUP IYU0 SUPGROUP(IYU)'
+ 'RDEFINE ZMFCLOUD
+     (IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU0)
+     UACC(NONE) OWNER(IYU)'
+
+ /* Grant z/OSMF Administrators the CP&M domain administrator role */
+ /* for the default domain, along with the group used for the      */
+ /* landlord role and the group used for the domain administrator  */
+ /* role for the default domain.                                   */
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU0
+     CLASS(ZMFCLOUD) ID(IYU IYU0 IZUADMIN) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the network and WLM administrator roles for the default  */
+ /* domain. z/OSMF administrators are also granted this role for   */
+ /* the default domain.                                            */
+ /*----------------------------------------------------------------*/
+ 'ADDGROUP IYU0RPAW SUPGROUP(IYU)'
+ 'RDEFINE ZMFCLOUD (IZUDFLT.ZOSMF.RESOURCE_POOL.WLM.IYU0)
+     UACC(NONE) OWNER(IYU)'
+ 'PERMIT IZUDFLT.ZOSMF.RESOURCE_POOL.WLM.IYU0 CLASS(ZMFCLOUD)
+     ID(IYU0RPAW IZUADMIN) ACCESS(READ)'
+
+ 'ADDGROUP IYU0RPAN SUPGROUP(IYU)'
+ 'RDEFINE ZMFCLOUD (IZUDFLT.ZOSMF.RESOURCE_POOL.NETWORK.IYU0)
+     UACC(NONE) OWNER(IYU)'
+ 'PERMIT IZUDFLT.ZOSMF.RESOURCE_POOL.NETWORK.IYU0 CLASS(ZMFCLOUD)
+     ID(IYU0RPAN IZUADMIN) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the domain template approver role for the default domain */
+ /*----------------------------------------------------------------*/
+ 'RDEFINE ZMFCLOUD (IZUDFLT.ZOSMF.TEMPLATE.APPROVERS.IYU0)
+     UACC(NONE) OWNER(IYU)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the consumer role for the default tenant.  The z/OSMF    */
+ /* administrators and z/OSMF users groups are granted the         */
+ /* consumer role for the default tenant.                          */
+ /*                                                                */
+ /* NOTE:  The z/OSMF administrators and users will ***NOT***      */
+ /* be granted access to any manually created tenant in the        */
+ /* default domain.                                                */
+ /*----------------------------------------------------------------*/
+ 'ADDGROUP IYU000 SUPGROUP(IYU0)'
+ 'RDEFINE ZMFCLOUD
+     (IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU000)
+     UACC(NONE) OWNER(IYU)'
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT.IYU000
+     CLASS(ZMFCLOUD) ID(IYU000 IZUADMIN IZUUSER) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Define the ZMFAPLA profiles for the following resources:       */
+ /*   - Cloud Provisioning's Software Services task                */
+ /*   - Cloud Provisioning's Resource Management task              */
+ /*   - The Workflow Editor task                                   */
+ /*   - System Variables administrator resource                    */
+ /*----------------------------------------------------------------*/
+ 'RDEFINE ZMFAPLA (IZUDFLT.ZOSMF.PROVISIONING.SOFTWARE_SERVICES)
+     UACC(NONE) OWNER(IYU)'
+ 'RDEFINE ZMFAPLA (IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT)
+     UACC(NONE) OWNER(IYU)'
+ 'RDEFINE ZMFAPLA (IZUDFLT.ZOSMF.WORKFLOW.EDITOR)
+     UACC(NONE) OWNER(IYU)'
+ 'RDEFINE ZMFAPLA (IZUDFLT.ZOSMF.VARIABLES.SYSTEM.ADMIN)
+     UACC(NONE) OWNER(IYU)'
+
+ /*----------------------------------------------------------------*/
+ /* Grant access to z/OSMF to the landlord, default domain         */
+ /* administrator and the default tenant consumer groups.  The     */
+ /* IYU0RPAN and IYU0RPAW groups do not need explicit access       */
+ /* because users connected to them are required to be Networking  */
+ /* and Workload Manager administrators, who will already be in    */
+ /* the IZUUSER group.                                             */
+ /*----------------------------------------------------------------*/
+ 'PERMIT IZUDFLT.ZOSMF CLASS(ZMFAPLA) ID(IYU IYU0 IYU000)
+     ACCESS(READ)'
+ 'PERMIT IZUDFLT CLASS(APPL) ID(IYU IYU0 IYU000) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup access so Cloud Provisioning users (landlords, default   */
+ /* domain's domain administrators and default tenant's consumers) */
+ /* can access the Software Services, Workflows and Workflow Editor*/
+ /* tasks.                                                         */
+ /*                                                                */
+ /* z/OSMF administrators and users are granted access to this     */
+ /* navigation task.                                               */
+ /*----------------------------------------------------------------*/
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.SOFTWARE_SERVICES CLASS(ZMFAPLA)
+     ID(IZUADMIN IZUUSER IYU IYU0 IYU000) ACCESS(READ)'
+ 'PERMIT IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS CLASS(ZMFAPLA)
+     ID(IYU IYU0 IYU000) ACCESS(READ)'
+ 'PERMIT IZUDFLT.ZOSMF.WORKFLOW.EDITOR CLASS(ZMFAPLA)
+     ID(IZUADMIN IZUUSER IYU IYU0) ACCESS(READ)'
+
+
+ /*----------------------------------------------------------------*/
+ /* Setup access so Cloud Provisioning administrative users        */
+ /* (landlords, default domain's administrators) can access the    */
+ /* Resource Management navigation task.                           */
+ /*                                                                */
+ /* z/OSMF administrators are granted access to this navigation    */
+ /* task.                                                          */
+ /*----------------------------------------------------------------*/
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.RESOURCE_MANAGEMENT
+     CLASS(ZMFAPLA) ID(IZUADMIN IYU IYU0) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup access so Cloud Provisioning resource administrators can */
+ /* login and access the Workflows and Software Services tasks.    */
+ /*----------------------------------------------------------------*/
+ 'PERMIT IZUDFLT.ZOSMF CLASS(ZMFAPLA) ID(IYU0RPAN IYU0RPAW)
+     ACCESS(READ)'
+ 'PERMIT IZUDFLT.ZOSMF.PROVISIONING.SOFTWARE_SERVICES
+     CLASS(ZMFAPLA) ID(IYU0RPAN IYU0RPAW) ACCESS(READ)'
+ 'PERMIT IZUDFLT.ZOSMF.WORKFLOW.WORKFLOWS CLASS(ZMFAPLA)
+     ID(IYU0RPAN IYU0RPAW) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Grant authority to the z/OSMF Administrator group to modify and*/
+ /* delete System Variables via the Systems task or the REST API.  */
+ /*----------------------------------------------------------------*/
+ 'PERMIT IZUDFLT.ZOSMF.VARIABLES.SYSTEM.ADMIN CLASS(ZMFAPLA)
+     ID(IZUADMIN) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Setup the security administrator profile used to determine if  */
+ /* an ID being specified as the security administrator of a domain*/
+ /* is permitted to be assigned as such.                           */
+ /*                                                                */
+ /* Define the ZMFCLOUD class IZUDFLT.ZOSMF.SECURITY.ADMIN profile */
+ /* and grant read access to the IZUSECAD z/OSMF security          */
+ /* administrator group.                                           */
+ /*                                                                */
+ /* Landlords can only specify the IDs of security administrators  */
+ /* that have read access to the IZUDFLT.ZOSMF.SECURITY.ADMIN      */
+ /* ZMFCLOUD class profile.                                        */
+ /*                                                                */
+ /* --- Only security administrator IDs that are approved          */
+ /* --- beforehand should be added to the IZUSECAD group.  IDs     */
+ /* --- assigned as security administrator in a domain will have   */
+ /* --- that ID used to perform Resource Management dynamic        */
+ /* --- security updates.                                          */
+ /*----------------------------------------------------------------*/
+ 'RDEFINE ZMFCLOUD (IZUDFLT.ZOSMF.SECURITY.ADMIN)
+     UACC(NONE) OWNER(IZUSECAD)'
+ 'PERMIT IZUDFLT.ZOSMF.SECURITY.ADMIN CLASS(ZMFCLOUD)
+     ID(IZUSECAD) ACCESS(READ)'
+
+ /*----------------------------------------------------------------*/
+ /* Connect the server ID IZUSVR to the IZUSECAD group.  This is   */
+ /* necessary so the server can change the group ownership of the  */
+ /* dynamic security REXX exec to IZUSECAD in order to secure it   */
+ /* from updates by anyone other than authorized security admins.  */
+ /* This izu.provisioning.security.config.rexx exec resides in the */
+ /* configuration/workflow of the USERDIR specified in the server  */
+ /* PROC.  The permissions are set to 570 and ownership set to     */
+ /* IZUSVR:IZUSECAD.                                               */
+ /*                                                                */
+ /* This operation only occurs during server startup when the      */
+ /* the REXX exec is not yet present.  If the exec already exists, */
+ /* then the server will not make any changes to it.               */
+ /*                                                                */
+ /* This is also needed to allow the IZUSVR ID to be used as the   */
+ /* security administrator ID when the default domain was created  */
+ /* when CLOUD_SEC_ADMIN was not specified in PARMLIB because      */
+ /* manual security mode is being used.  In this case, automatic   */
+ /* security will be used only for the default domain and IZUSVR   */
+ /* will be used to perform these operations.                      */
+ /*----------------------------------------------------------------*/
+ 'CONNECT (IZUSVR) GROUP(IZUSECAD)'
+
+ 'SETROPTS RACLIST(ZMFCLOUD,ZMFAPLA) REFRESH'
+/*
+//*================================================================*/
+//* IBM Cloud Provisioning and Management Setup for Network        */
+//* Configuration Assistant                                        */
+//*                                                                */
+//* Uncomment and modify the following RACF commands if you plan to*/
+//* use software services templates that dynamically provision     */
+//* network resources.                                             */
+//*                                                                */
+//* This step expects that the following resource classes are      */
+//* already activated:                                             */
+//*   OPERCMDS, SERVAUTH                                           */
+//*                                                                */
+//* NOTE:                                                          */
+//* It is required that the normal Network Configuration Assistant */
+//* security setup be completed beforehand if you plan to use      */
+//* software services templates that dynamically provision network */
+//* resources.                                                     */
+//*================================================================*/
+//PRSECCA   EXEC PGM=IKJEFT1B
+//SYSEXEC   DD  UNIT=SYSALLDA,SPACE=(80,(5,1)),
+//          DSN=&SYSEXEC,
+//          AVGREC=K,DSNTYPE=LIBRARY,
+//          RECFM=FB,LRECL=80,DSORG=PO
+//SYSUT2    DD  DISP=(OLD,PASS),VOL=REF=*.SYSEXEC,
+//          DSN=&SYSEXEC(PRSECCA)
+//SYSTSPRT  DD  SYSOUT=*
+//SYSTSIN   DD  *
+ REPRO INFILE(SYSIN) OUTFILE(SYSUT2)
+ %PRSECCA
+//SYSIN    DD *
+ /* REXX */
+ trace 'e'
+
+ ADDRESS TSO
+ /* 'RDEFINE OPERCMDS MVS.MCSOPER.* UACC(NONE) OWNER(IZUADMIN)'    */
+
+ /* 'PERMIT MVS.MCSOPER.* CLASS(OPERCMDS) ID(IZUSVR) ACCESS(READ)' */
+
+ /* 'RDEFINE OPERCMDS (MVS.VARY.TCPIP.OBEYFILE) UACC(NONE)         */
+ /*      OWNER(IZUADMIN)'                                          */
+
+ /* 'PERMIT MVS.VARY.TCPIP.OBEYFILE CLASS(OPERCMDS) ID(IZUSVR)     */
+ /*     ACCESS(CONTROL)'                                           */
+
+ /* 'RDEFINE OPERCMDS (MVS.DISPLAY.*) UACC(NONE) OWNER(IZUADMIN)'  */
+
+ /* 'PERMIT MVS.DISPLAY.* CLASS(OPERCMDS) ID(IZUSVR) ACCESS(READ)' */
+
+ /*----------------------------------------------------------------*/
+ /* In the following RACF commands, make the following changes:    */
+ /*                                                                */
+ /* 1. Replace <system> with the target MVS system name from which */
+ /*    z/OSMF Cloud Provisioning and Management will provision     */
+ /*    resources. e.g. SY1.  Do NOT use *all.                      */
+ /*                                                                */
+ /* 2. Replace <tcp-proc-name> with the TCP/IP started task        */
+ /*    procedure name of the TCP/IP stack where z/OSMF is running. */
+ /*----------------------------------------------------------------*/
+ /* 'RDEFINE SERVAUTH                                              */
+ /*     EZB.NETSTAT.<system>.<tcp-proc-name>.VIPADCFG              */
+ /*     UACC(NONE) OWNER(IZUADMIN)'                                */
+
+ /* 'PERMIT EZB.NETSTAT.<system>.<tcp-proc-name>.VIPADCFG          */
+ /*     CLASS(SERVAUTH) ID(IZUSVR) ACCESS(READ)'                   */
+
+ /* 'RDEFINE SERVAUTH EZB.NETWORKUTILS.CLOUD.<system> UACC(NONE)   */
+ /*       OWNER(IZUADMIN)'                                         */
+
+ /* 'PERMIT EZB.NETWORKUTILS.CLOUD.<system> CLASS(SERVAUTH)        */
+ /*     ID(IZUSVR) ACCESS(READ)'                                   */
+
+ /* Grant ALTER access to IZUSVR for the stack include and stack   */
+ /* dynamic update datasets if your system protects data sets with */
+ /* SAF profiles.  These are data sets you will create manually and*/
+ /* then reference in Network Configuration Assistant when you     */
+ /* configure a TCP/IP stack from the Systems tab in the Cloud     */
+ /* perspective.                                                   */
+
+ /* If the z/OS ROUTE command is protected by SAF, IZUSVR must have*/
+ /* READ access to the MVS.ROUTE.CMD.<system> SAF profile in the   */
+ /* OPERCMDS class.                                                */
+ /*                                                                */
+ /* You should determine if you are using generic profiles and     */
+ /* update the profile names in these two commands accordingly.    */
+ /*----------------------------------------------------------------*/
+ /* 'RDEFINE OPERCMDS MVS.ROUTE.CMD.<system> UACC(NONE)            */
+ /*     OWNER(IZUADMIN)'                                           */
+ /* 'PERMIT MVS.ROUTE.CMD.<system> CLASS(OPERCMDS)                 */
+ /*     ID(IZUSVR) ACCESS(READ)'                                   */
+
+ /* 'SETROPTS RACLIST(OPERCMDS,SERVAUTH) REFRESH'                  */
+/*
+//*================================================================*/
+//* IBM Cloud Provisioning and Management Setup for Workload       */
+//* Management                                                     */
+//*                                                                */
+//* Uncomment and modify the following RACF commands if you plan to*/
+//* use software services templates that dynamically provision     */
+//* workload management classification rules.                      */
+//*                                                                */
+//* NOTE:                                                          */
+//* It is required that the normal Workload Management             */
+//* security setup be completed beforehand if you plan to use      */
+//* software services templates that dynamically provision workload*/
+//* management classification rules.                               */
+//*================================================================*/
+//PRSECWM   EXEC PGM=IKJEFT1B
+//SYSEXEC   DD  UNIT=SYSALLDA,SPACE=(80,(5,1)),
+//          DSN=&SYSEXEC,
+//          AVGREC=K,DSNTYPE=LIBRARY,
+//          RECFM=FB,LRECL=80,DSORG=PO
+//SYSUT2    DD  DISP=(OLD,PASS),VOL=REF=*.SYSEXEC,
+//          DSN=&SYSEXEC(PRSECWM)
+//SYSTSPRT  DD  SYSOUT=*
+//SYSTSIN   DD  *
+ REPRO INFILE(SYSIN) OUTFILE(SYSUT2)
+ %PRSECWM
+//SYSIN    DD *
+ /* REXX */
+ trace 'e'
+
+ ADDRESS TSO
+ /* 'RDEFINE ZMFAPLA                                               */
+ /*     IZUDFLT.ZOSMF.WORKLOAD_MANAGEMENT.WORKLOAD_MANAGEMENT.ENWRP*/
+ /*     UACC(NONE) OWNER(IZUADMIN)'                                */
+
+ /* 'PERMIT                                                        */
+ /*     IZUDFLT.ZOSMF.WORKLOAD_MANAGEMENT.WORKLOAD_MANAGEMENT.ENWRP*/
+ /*     CLASS(ZMFAPLA) ID(IZUUSER IZUADMIN) ACCESS(READ)'          */
+/*
+//*================================================================*/
+//* IBM Cloud Provisioning and Management Setup for z/OS Console   */
+//* Services (REST Consoles)                                       */
+//*                                                                */
+//* The REST Consoles support issues console commands using one of */
+//* the following two REST end-points:                             */
+//*    /zosmf/restconsoles/consoles/consolename                    */
+//*    /zosmf/restconsoles/consoles/defcn                          */
+//*                                                                */
+//* consolename is a 2-8 character EMCS console name.  The console */
+//* name defcn is reserved by IBM to identify the default console  */
+//* name that will be used for the userid issuing the REST Consoles*/
+//* request.                                                       */
+//*                                                                */
+//* This job will setup the specified TSO userid to authorize it   */
+//* to have access to the z/OS CONSOLE resource, define the EMCS   */
+//* console that maps to the defcn console resource and authorize  */
+//* the TSO userid to the new EMCS console.                        */
+//*                                                                */
+//* When using the defcn console resource, the EMCS console name   */
+//* is derived from the TSO userid that is using the REST Consoles */
+//* support.  The EMCS console name derived for defcn will be the  */
+//* TSO userid with "CN" appended, unless the userid is greater    */
+//* than 6 characters.  For TSO userids greater than six           */
+//* characters, the userid is truncated to six characters and "CN" */
+//* is appended to that value.                                     */
+//*                                                                */
+//* For example:                                                   */
+//*    TSO userid: OPER     defcn console name: OPERCN             */
+//*    TSO userid: IBMUSER  defcn console name: IBMUSECN           */
+//*                                                                */
+//* The basic security setup is as follows:                        */
+//* 1) Authorize the TSO userid (OPER) to:                         */
+//*    a) Use the z/OSMF common TSO proc and account.              */
+//*                                                                */
+//*    b) Create a Common Event Adapter (CEA) TSO address space.   */
+//*                                                                */
+//*    c) To create an EMCS console (OPERCN) using the TSO CONSOLE */
+//*       command.                                                 */
+//*                                                                */
+//*    d) To route commands to systems, access the JES SYSLOG and  */
+//*       access the OPERLOG logstream.                            */
+//*                                                                */
+//* 2) Create the MVS ID for the console name OPERCN with OPERPARM */
+//*    settings for AUTH(MASTER) ROUTECODE(ALL) and MSCOPE         */
+//*    according what you specify in this job.                     */
+//*                                                                */
+//* CP&M Template Usage of REST Consoles                           */
+//* ------------------------------------                           */
+//*                                                                */
+//* CP&M templates should be setup to specify a console runAsUser  */
+//* ID such as OPER to be used as the runAsUser for any            */
+//* workflow steps in the template that will call REST Console     */
+//* APIs.  The setup using this job will define the OPERCN MVS ID  */
+//* for the EMCS console and grant the console runAsUser (OPER)    */
+//* all the required authority for console operations using the    */
+//* OPERCN EMCS console.                                           */
+//*                                                                */
+//* Uncomment and modify the following RACF commands if you plan to*/
+//* use software services templates that issue operator commands.  */
+//*                                                                */
+//* This step expects that the following resource classes are      */
+//* already activated:                                             */
+//*   ACCTNUM, TSOPROC, SERVAUTH, TSOAUTH, LOGSTRM, JESSPOOL       */
+//*   OPERCMDS                                                     */
+//*                                                                */
+//* NOTE:                                                          */
+//* It is required that the normal z/OSMF for z/OS Operator        */
+//* Consoles security setup be completed beforehand if you plan to */
+//* use software services templates that issue operator commands.  */
+//*================================================================*/
+//PRSECCN   EXEC PGM=IKJEFT1B
+//SYSEXEC   DD  UNIT=SYSALLDA,SPACE=(80,(5,1)),
+//          DSN=&SYSEXEC,
+//          AVGREC=K,DSNTYPE=LIBRARY,
+//          RECFM=FB,LRECL=80,DSORG=PO
+//SYSUT2    DD  DISP=(OLD,PASS),VOL=REF=*.SYSEXEC,
+//          DSN=&SYSEXEC(PRSECCN)
+//SYSTSPRT  DD  SYSOUT=*
+//SYSTSIN   DD  *
+ REPRO INFILE(SYSIN) OUTFILE(SYSUT2)
+ %PRSECCN
+//SYSIN    DD *
+ /* REXX */
+ trace 'e'
+
+ ADDRESS TSO
+ /*----------------------------------------------------------------*/
+ /* Authorize the TSO userid that will be used to issue operator   */
+ /* commands through an EMCS console to use the z/OSMF common TSO  */
+ /* account setup and to use the Common Event Adapter (CEA) to     */
+ /* create TSO address spaces.                                     */
+ /* -------------------------------------------------------        */
+ /*                                                                */
+ /* In general, CP&M templates utilize the REST Consoles default   */
+ /* console name endpoint, defcn.  Therefore, this setup should    */
+ /* create the "CN" console for the TSO userid issuing REST Console*/
+ /* requests from the templates.                                   */
+ /*                                                                */
+ /* For example, if the <tso-userid> issuing the console requests  */
+ /* is OPER1, the <consolename> should be defined as OPER1CN.      */
+ /*                                                                */
+ /* 1. Replace <account> with the value specified for the z/OSMF   */
+ /*    parmlib option: COMMON_TSO ACCT                             */
+ /* 2. Replace <tso-userid> with the TSO user ID that will issue   */
+ /*    operator commands.                                          */
+ /* 3. Replace <proc> with the value specified for the z/OSMF      */
+ /*    parmlib option: "COMMON_TSO PROC".                          */
+ /* 4. Replace <owner-id> with the user ID or group that will be   */
+ /*    the owner of the profile.                                   */
+ /* 5. Replace <consolename> with the EMCS console name.           */
+ /*    This value should be <tso-userid>CN                         */
+ /* 6. Replace <sysname> with the target system name to which the  */
+ /*    TSO userid issuing the operator commands is to be           */
+ /*    authorized.                                                 */
+ /* 7. Replace <mscope-sysname> with the system name.  For local   */
+ /*    sysplex specify *all. This name will be displayed on the    */
+ /*    landing page of the z/OS Operator Consoles task.            */
+ /*                                                                */
+ /*    You should determine if you are using generic profiles and  */
+ /*    update the profile names in these two commands accordingly. */
+ /*                                                                */
+ /*                                                                */
+ /* NOTE: The base z/OS Console Services support requires the      */
+ /*       z/OSMF started task ID (IZUSVR by default) to have READ  */
+ /*       access.                                                  */
+ /*----------------------------------------------------------------*/
+ /* 'RDEFINE ACCTNUM <account> UACC(NONE) OWNER(<owner-id>)'       */
+ /* 'PERMIT <account> CLASS(ACCTNUM) ACCESS(READ) ID(<tso-userid>)'*/
+
+ /* 'RDEFINE TSOPROC <proc> UACC(NONE) OWNER(<owner-id>)'          */
+ /* 'PERMIT <proc> CLASS(TSOPROC) ACCESS(READ) ID(<tso-userid>)'   */
+
+ /* 'RDEFINE SERVAUTH CEA.CEATSO.TSOREQUEST                        */
+ /*      UACC(NONE) OWNER(<owner-id>)'                             */
+ /* 'PERMIT CEA.CEATSO.TSOREQUEST CLASS(SERVAUTH) ACCESS(READ)     */
+ /*      ID(IZUSVR <tso-userid>)'                                  */
+
+ /*----------------------------------------------------------------*/
+ /* Authorize the TSO userid to issue operator commands via the    */
+ /* TSO CONSOLE command.                                           */
+ /* -----------------------------------------------------------    */
+ /* 'RDEFINE TSOAUTH CONSOLE UACC(NONE) OWNER(<owner-id>)'         */
+ /* 'PERMIT CONSOLE CLASS(TSOAUTH) ACCESS(READ) ID(<tso-userid>)'  */
+
+ /*----------------------------------------------------------------*/
+ /* Authorize the TSO userid to create the EMCS console            */
+ /*                                                                */
+ /* This assumes the OPERCMDS resource class is already active.    */
+ /*----------------------------------------------------------------*/
+ /* 'RDEFINE OPERCMDS MVS.MCSOPER.<consolename>                    */
+ /*      UACC(NONE) OWNER(<owner-id>)'                             */
+ /* 'PERMIT MVS.MCSOPER.<consolename> CLASS(OPERCMDS) ACCESS(READ) */
+ /*    ID(<tso-userid>)'                                           */
+
+ /*----------------------------------------------------------------*/
+ /* Authorize the TSO userid to:                                   */
+ /*  - Route commands to a system.                                 */
+ /*  - Access the JES SYSLOG.                                      */
+ /*  - Access the OPERLOG logstream.                               */
+ /*----------------------------------------------------------------*/
+ /* 'RDEFINE OPERCMDS MVS.ROUTE.CMD.<sysname> UACC(NONE)           */
+ /*      OWNER(<owner-id>)'                                        */
+ /* 'PERMIT MVS.ROUTE.CMD.<sysname> CLASS(OPERCMDS) ACCESS(READ)   */
+ /*    ID(<tso-userid>)'                                           */
+
+ /* 'RDEFINE JESSPOOL <sysname>.+MASTER+.SYSLOG.*.*                */
+ /*      UACC(NONE) OWNER(<owner-id>)'                             */
+ /* 'PERMIT <sysname>.+MASTER+.SYSLOG.*.* CLASS(JESSPOOL)          */
+ /*     ID(<tso-userid>) ACCESS(READ)'                             */
+
+ /* 'RDEFINE LOGSTRM SYSPLEX.OPERLOG UACC(NONE) OWNER(<owner-id>)' */
+ /* 'PERMIT SYSPLEX.OPERLOG CLASS(LOGSTRM) ID(<tso-userid>)        */
+ /*     ACCESS(READ)'                                              */
+
+ /*----------------------------------------------------------------*/
+ /* Define the MVS ID that represents the EMCS console name.       */
+ /*----------------------------------------------------------------*/
+ /* 'ADDUSER <consolename> OPERPARM(AUTH(MASTER) ROUTCODE(ALL)     */
+ /*     AUTO(YES) MSCOPE(<mscope-sysname>))'                       */
+
+ /* 'SETROPTS RACLIST(ACCTNUM,TSOPROC,SERVAUTH,TSOAUTH,LOGSTRM,    */
+ /*                   JESSPOOL) REFRESH'                           */
+/*

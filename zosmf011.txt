@@ -1,0 +1,64 @@
+//ZOSMF011 JOB (MVSS),'CONSOLES',MSGCLASS=H,CLASS=A,NOTIFY=&SYSUID
+//STEP1  EXEC PGM=IKJEFT01
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN  DD *
+ SETROPTS CLASSACT(ACCTNUM)
+ RDEFINE ACCTNUM IZUACCT UACC(NONE)
+ PERMIT IZUACCT CLASS(ACCTNUM) ACCESS(READ) ID(IZUUSER)
+ SETROPTS RACLIST(ACCTNUM) REFRESH
+
+ RDEFINE TSOAUTH console UACC(NONE)
+ PERMIT CONSOLE CLASS(TSOAUTH) ACCESS(READ) ID(IZUUSER)
+ SETROPTS RACLIST(TSOAUTH) REFRESH
+
+ SETROPTS CLASSACT(OPERCMDS)
+ RDEFINE OPERCMDS MVS.DISPLAY.EMCS UACC(NONE)
+ PERMIT MVS.DISPLAY.EMCS CLASS(OPERCMDS) +
+        ID(IZUUSER) ACCESS(READ)
+ RDEFINE OPERCMDS MVS.DISPLAY.TIMEDATE UACC(NONE)
+ PERMIT MVS.DISPLAY.TIMEDATE CLASS(OPERCMDS) +
+        ID(IZUUSER) ACCESS(READ)
+
+ SETROPTS CLASSACT(ZMFAPLA)
+ SETROPTS RACLIST(ZMFAPLA) GENERIC(ZMFAPLA)
+ RDEFINE ZMFAPLA IZUDFLT.ZOSMF.CONSOLES.ZOSOPER UACC(NONE)
+ PERMIT IZUDFLT.ZOSMF.CONSOLES.ZOSOPER CLASS(ZMFAPLA) +
+   ID(IZUUSER) ACCESS(READ)
+ PERMIT IZUDFLT.ZOSMF.CONSOLES.ZOSOPER CLASS(ZMFAPLA) +
+   ID(IZUADMIN) ACCESS(READ)
+ SETROPTS RACLIST(ZMFAPLA) REFRESH
+ RDEFINE OPERCMDS MVS.MCSOPER.**            UACC(NONE)
+ PERMIT MVS.MCSOPER.**            CLASS(OPERCMDS) ACCESS(READ) +
+       ID(IZUUSER)
+
+ /******************************************************************/
+ /* Below ADDUSER command can be added multiple times to setup     */
+ /* multiple EMCS consoles at a time. You just need to update the  */
+ /* <consolename> and <sysname> in each individual line.           */
+ /* 1. Please replace <consolename> with the EMCS console name to  */
+ /* be used.                                                       */
+ /* 2. Please replace <sysname> with the system name which is      */
+ /* displayed in the landing page of z/OS Operator Consoles task.  */
+ /* If you are setup local sysplex, you need to replace <sysname>  */
+ /* with "*all".                                                   */
+ /******************************************************************/
+ /*ADDUSER <consolename> OPERPARM(AUTH(master) ROUTCODE(all) +     */
+ /*     MSCOPE(<sysname>) AUTO(YES))                               */
+
+ RDEFINE OPERCMDS MVS.ROUTE.CMD.**        UACC(NONE)
+ PERMIT MVS.ROUTE.CMD.** CLASS(OPERCMDS) ACCESS(read) +
+       ID(IZUUSER)
+
+ RDEFINE JESSPOOL *.+MASTER+.SYSLOG.*.* UACC(NONE)
+ PERMIT *.+MASTER+.SYSLOG.*.* CLASS(JESSPOOL) +
+      ID(SUPZOS) ACCESS(READ)
+
+ RDEFINE LOGSTRM SYSPLEX.OPERLOG UACC(NONE)
+ PERMIT SYSPLEX.OPERLOG CLASS(LOGSTRM) +
+      ID(SUPZOS) ACCESS(READ)
+
+ SETROPTS RACLIST(LOGSTRM) REFRESH
+ SETROPTS RACLIST(JESSPOOL) REFRESH
+ SETROPTS RACLIST(OPERCMDS) REFRESH
+/*
